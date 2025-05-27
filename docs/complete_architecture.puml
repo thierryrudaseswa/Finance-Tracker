@@ -1,0 +1,295 @@
+@startuml "Mobile Finance Tracker - Complete Architecture"
+!theme plain
+
+' Common styling
+skinparam {
+    FontName Arial
+    FontSize 12
+    Shadowing false
+    BackgroundColor white
+    ArrowColor #2563EB
+    BorderColor #64748B
+}
+
+' 1. COMPONENT DIAGRAM
+title Component Architecture
+
+package "Mobile Finance Tracker" {
+  package "Frontend (Mobile App)" {
+    [UI Layer] as UI
+    [Navigation] as Nav
+    [State Management] as State
+    [Local Storage] as Storage
+    [API Client] as Client
+    
+    package "Core Components" {
+      [ExpenseForm]
+      [DatePicker]
+      [Charts]
+      [CategoryPicker]
+    }
+    
+    package "Screens" {
+      [Dashboard]
+      [ExpenseList]
+      [ExpenseDetails]
+      [Profile]
+      [Settings]
+    }
+  }
+  
+  package "Backend Services" {
+    [Auth Service]
+    [Expense Service]
+    [Analytics Service]
+    database "Database"
+  }
+}
+
+UI --> Nav
+Nav --> Screens
+UI --> State
+State --> Storage
+UI --> [Core Components]
+[Core Components] --> Client
+Client --> [Backend Services]
+[Backend Services] --> Database
+
+' 2. DATA MODEL
+newpage
+title Data Model
+
+entity "User" {
+  * id: string
+  --
+  * email: string
+  * name: string
+  * passwordHash: string
+  * createdAt: datetime
+  settings: json
+}
+
+entity "Expense" {
+  * id: string
+  --
+  * userId: string <<FK>>
+  * amount: decimal
+  * category: string
+  * description: string
+  * date: datetime
+  * createdAt: datetime
+  updatedAt: datetime
+}
+
+entity "Category" {
+  * id: string
+  --
+  * name: string
+  * icon: string
+  color: string
+  budget: decimal
+}
+
+User ||--o{ Expense
+Category ||--o{ Expense
+
+' 3. AUTHENTICATION FLOW
+newpage
+title Authentication Flow
+
+actor User
+participant "Mobile App" as App
+participant "Auth Service" as Auth
+database "Database" as DB
+
+User -> App: Enter Credentials
+activate App
+
+App -> Auth: POST /auth/login
+activate Auth
+
+Auth -> DB: Validate Credentials
+activate DB
+DB --> Auth: User Data
+deactivate DB
+
+alt Valid Credentials
+    Auth --> App: Return JWT Token
+    App -> App: Store Token
+    App --> User: Show Dashboard
+else Invalid Credentials
+    Auth --> App: Error Response
+    App --> User: Show Error Message
+end
+
+deactivate Auth
+deactivate App
+
+' 4. EXPENSE FLOW
+newpage
+title Expense Creation Flow
+
+actor User
+participant "ExpenseForm" as Form
+participant "API Client" as API
+participant "Backend" as Backend
+database "Database" as DB
+
+User -> Form: Fill Expense Details
+activate Form
+
+Form -> Form: Validate Input
+Form -> API: Submit Expense
+activate API
+
+API -> Backend: POST /expenses
+activate Backend
+
+Backend -> DB: Save Expense
+activate DB
+DB --> Backend: Confirm Save
+deactivate DB
+
+Backend --> API: Return Expense
+deactivate Backend
+
+API --> Form: Success Response
+deactivate API
+
+Form --> User: Show Success Message
+deactivate Form
+
+' 5. STATE MACHINE
+newpage
+title Expense State Machine
+
+[*] --> Idle
+
+state Idle
+state "Creating Expense" as Create
+state "Validating" as Validate
+state "Saving" as Save
+state "Success" as Success
+state "Error" as Error
+
+Idle --> Create: Click Add
+Create --> Validate: Submit Form
+Validate --> Save: Valid Input
+Validate --> Create: Invalid Input
+Save --> Success: Save Complete
+Save --> Error: Save Failed
+Error --> Create: Retry
+Success --> Idle: Done
+
+' 6. USE CASES
+newpage
+title Use Cases
+
+actor "User" as user
+actor "System" as system
+
+rectangle "Finance Tracker" {
+    usecase "Login/Register" as UC1
+    usecase "Manage Expenses" as UC2
+    usecase "View Analytics" as UC3
+    usecase "Manage Profile" as UC4
+    
+    usecase "Add Expense" as UC2.1
+    usecase "Edit Expense" as UC2.2
+    usecase "Delete Expense" as UC2.3
+    
+    usecase "View Monthly Trends" as UC3.1
+    usecase "View Category Analysis" as UC3.2
+}
+
+user --> UC1
+user --> UC2
+user --> UC3
+user --> UC4
+
+UC2 <|-- UC2.1
+UC2 <|-- UC2.2
+UC2 <|-- UC2.3
+
+UC3 <|-- UC3.1
+UC3 <|-- UC3.2
+
+' 7. API STRUCTURE
+newpage
+title API Structure
+
+package "API Endpoints" {
+    class "Authentication" {
+        + POST /auth/login
+        + POST /auth/register
+        + GET /auth/profile
+        + PUT /auth/profile
+    }
+
+    class "Expenses" {
+        + GET /expenses
+        + POST /expenses
+        + GET /expenses/{id}
+        + PUT /expenses/{id}
+        + DELETE /expenses/{id}
+    }
+
+    class "Categories" {
+        + GET /categories
+        + GET /categories/{id}
+    }
+
+    class "Analytics" {
+        + GET /analytics/monthly
+        + GET /analytics/categories
+        + GET /analytics/summary
+    }
+}
+
+' 8. PROJECT STRUCTURE
+newpage
+title Project Structure
+
+package "mobile-finance-tracker" {
+    package "app" {
+        package "(auth)" {
+            [login.tsx]
+            [register.tsx]
+        }
+        
+        package "(tabs)" {
+            [index.tsx]
+            [expenses.tsx]
+            [profile.tsx]
+        }
+        
+        package "expense" {
+            [new.tsx]
+            [[id].tsx]
+            [edit/[id].tsx]
+        }
+        
+        package "components" {
+            [ExpenseForm.tsx]
+            [ExpenseList.tsx]
+            [Charts.tsx]
+        }
+        
+        package "context" {
+            [AuthContext.tsx]
+            [ThemeContext.tsx]
+        }
+        
+        package "services" {
+            [api.ts]
+            [storage.ts]
+        }
+    }
+    
+    package "assets" {
+        [images]
+        [icons]
+    }
+}
+
+@enduml 

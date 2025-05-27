@@ -1,0 +1,257 @@
+@startuml "Mobile Finance Tracker Architecture"
+
+' Style definitions
+skinparam backgroundColor #FFFFFF
+skinparam handwritten false
+skinparam monochrome false
+skinparam shadowing false
+skinparam defaultFontName Arial
+skinparam sequence {
+    ArrowColor #2563EB
+    ActorBorderColor #2563EB
+    LifeLineBorderColor #64748B
+    ParticipantBorderColor #2563EB
+    ParticipantBackgroundColor #EFF6FF
+}
+
+' Component Diagram
+title Component Architecture
+
+package "Frontend (React Native)" {
+    [UI Components] as UI
+    [Navigation] as Nav
+    [State Management] as State
+    [API Client] as Client
+    [Local Storage] as Storage
+    
+    component "Core Components" {
+        [ExpenseForm]
+        [DatePicker]
+        [Charts]
+        [Lists]
+    }
+    
+    component "Screens" {
+        [Dashboard]
+        [ExpensesList]
+        [ExpenseDetail]
+        [Profile]
+    }
+    
+    component "Providers" {
+        [ThemeProvider]
+        [AuthProvider]
+    }
+}
+
+package "Backend Services" {
+    [Authentication API]
+    [Expenses API]
+    [Analytics API]
+    [Settings API]
+    database "Database"
+}
+
+UI --> Nav
+Nav --> Screens
+UI --> State
+State --> Storage
+UI --> [Core Components]
+[Core Components] --> Client
+Client --> [Backend Services]
+[Backend Services] --> Database
+
+' Class Diagram
+title Domain Model
+
+class User {
+    +id: string
+    +email: string
+    +name: string
+    +createdAt: Date
+    +settings: UserSettings
+}
+
+class Expense {
+    +id: string
+    +userId: string
+    +amount: number
+    +category: string
+    +description: string
+    +date: Date
+    +createdAt: Date
+    +updatedAt: Date
+}
+
+class Category {
+    +id: string
+    +name: string
+    +color: string
+    +icon: string
+}
+
+class UserSettings {
+    +currency: string
+    +theme: string
+    +notifications: boolean
+}
+
+User "1" -- "*" Expense
+User "1" -- "1" UserSettings
+Expense "*" -- "1" Category
+
+' Sequence Diagram
+title Expense Creation Flow
+
+actor User
+participant "UI" as UI
+participant "ExpenseForm" as Form
+participant "API Client" as API
+participant "Backend" as Backend
+database "Database" as DB
+
+User -> UI: Click "Add Expense"
+activate UI
+UI -> Form: Open Form
+activate Form
+User -> Form: Fill Details
+Form -> Form: Validate Input
+Form -> API: Submit Expense
+activate API
+API -> Backend: POST /expenses
+activate Backend
+Backend -> DB: Save Expense
+DB --> Backend: Confirm Save
+Backend --> API: Return Expense
+deactivate Backend
+API --> Form: Update Success
+deactivate API
+Form --> UI: Close Form
+deactivate Form
+UI --> User: Show Success Toast
+deactivate UI
+
+' State Diagram
+title Expense State Lifecycle
+
+[*] --> Draft: Create New
+Draft --> Validating: Submit
+Validating --> Saving: Valid
+Validating --> Draft: Invalid
+Saving --> Saved: Success
+Saving --> Error: Failed
+Error --> Draft: Retry
+Saved --> [*]
+
+' Use Case Diagram
+title Core Use Cases
+
+actor "User" as user
+actor "System" as system
+
+rectangle "Finance Tracker" {
+    usecase "Manage Expenses" as UC1
+    usecase "View Analytics" as UC2
+    usecase "Manage Profile" as UC3
+    usecase "Configure Settings" as UC4
+    
+    usecase "Create Expense" as UC1.1
+    usecase "Edit Expense" as UC1.2
+    usecase "Delete Expense" as UC1.3
+    
+    usecase "View Monthly Trends" as UC2.1
+    usecase "View Category Analysis" as UC2.2
+}
+
+user --> UC1
+user --> UC2
+user --> UC3
+user --> UC4
+
+UC1 <|-- UC1.1
+UC1 <|-- UC1.2
+UC1 <|-- UC1.3
+
+UC2 <|-- UC2.1
+UC2 <|-- UC2.2
+
+system --> UC2
+system --> UC4
+
+' API Endpoints Documentation
+title API Endpoints
+
+interface "Authentication" {
+    + POST /auth/register
+    + POST /auth/login
+    + POST /auth/forgot-password
+    + PUT /auth/reset-password
+    + GET /auth/profile
+    + PUT /auth/profile
+}
+
+interface "Expenses" {
+    + GET /expenses
+    + POST /expenses
+    + GET /expenses/:id
+    + PUT /expenses/:id
+    + DELETE /expenses/:id
+}
+
+interface "Categories" {
+    + GET /categories
+    + POST /categories
+    + PUT /categories/:id
+    + DELETE /categories/:id
+}
+
+interface "Analytics" {
+    + GET /analytics/monthly
+    + GET /analytics/category
+    + GET /analytics/summary
+    + GET /analytics/trends
+}
+
+interface "Settings" {
+    + GET /settings
+    + PUT /settings
+    + GET /settings/export
+}
+
+' Directory Structure
+title Project Structure
+
+package "mobile-finance-tracker" {
+    folder "app" {
+        folder "(auth)" {
+            [login.tsx]
+            [register.tsx]
+        }
+        folder "(tabs)" {
+            [index.tsx]
+            [expenses.tsx]
+            [profile.tsx]
+        }
+        folder "expense" {
+            [new.tsx]
+            [[id].tsx]
+            [edit/[id].tsx]
+        }
+        folder "context" {
+            [AuthContext.tsx]
+            [ThemeContext.tsx]
+        }
+        folder "services" {
+            [api.ts]
+            [storage.ts]
+        }
+        folder "types" {
+            [index.ts]
+        }
+    }
+    folder "assets"
+    [package.json]
+    [app.json]
+}
+
+@enduml 
